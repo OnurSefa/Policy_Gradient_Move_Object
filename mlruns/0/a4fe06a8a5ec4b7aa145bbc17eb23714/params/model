@@ -1,0 +1,14 @@
+ActorHigh(
+  (state_handler): Sequential(
+    (0): Linear(in_features=6, out_features=256, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=256, out_features=256, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=256, out_features=256, bias=True)
+    (5): ReLU()
+    (6): Linear(in_features=256, out_features=256, bias=True)
+    (7): ReLU()
+  )
+  (mean_head): Linear(in_features=256, out_features=2, bias=True)
+  (log_std_head): Linear(in_features=256, out_features=2, bias=True)
+)
