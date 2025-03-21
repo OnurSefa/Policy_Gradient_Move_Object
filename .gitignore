@@ -1,5 +1,5 @@
 *.DS_Store
-models
-metrics
+models_pt
+metrics_np
 .idea
 __pycache__

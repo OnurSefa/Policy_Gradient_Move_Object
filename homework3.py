@@ -14,9 +14,9 @@ import mlflow
 # Gradient clipping, learning rate scheduling eklenebilir
 # Model structure guncellenebilir, layer normalization eklenebilir
 
-NAME = "0010"
+NAME = "0012"
 DELTA = 0.05
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 5e-6
 GAMMA = 0.99
 ENTROPY_COEF = 0.01
 MAX_GRAD_NORM = 0.5
@@ -24,7 +24,7 @@ EPSILON = 1
 EPSILON_DECAY_RATE = 0.98
 EPSILON_DECAY_STEPS = 1
 NUM_EPISODES = 10001
-DESCRIPTION = "reintroduced epsilon"
+DESCRIPTION = "reduced learning rate"
 
 parameters = {
     "name": NAME,
@@ -196,8 +196,8 @@ class Hw3Env(environment.BaseEnv):
 def train():
     name = NAME
 
-    os.makedirs(f'models/{name}', exist_ok=True)
-    os.makedirs(f'metrics/{name}', exist_ok=True)
+    os.makedirs(f'models_pt/{name}', exist_ok=True)
+    os.makedirs(f'metrics_np/{name}', exist_ok=True)
 
     mlflow.start_run(run_name=f'{name}')
     mlflow.log_params(params=parameters)
@@ -271,12 +271,12 @@ def train():
             print(f"  Loss: {loss:.6f}")
 
         if i % 250 == 0:
-            torch.save(agent.model.state_dict(), f"models/{name}/model_{i:05}.pth")
+            torch.save(agent.model.state_dict(), f"models_pt/{name}/model_{i:05}.pth")
 
-    np.save(f"metrics/{name}/cumulative_rewards.npy", np.array(cumulative_rewards))
-    np.save(f"metrics/{name}/rps.npy", np.array(rps))
-    np.save(f"metrics/{name}/losses.npy", np.array(losses))
-    np.save(f"metrics/{name}/success_rate.npy", np.array(success_rate))
+    np.save(f"metrics_np/{name}/cumulative_rewards.npy", np.array(cumulative_rewards))
+    np.save(f"metrics_np/{name}/rps.npy", np.array(rps))
+    np.save(f"metrics_np/{name}/losses.npy", np.array(losses))
+    np.save(f"metrics_np/{name}/success_rate.npy", np.array(success_rate))
 
 
 if __name__ == "__main__":
