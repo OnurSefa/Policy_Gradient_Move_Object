@@ -5,16 +5,10 @@ import environment
 from agent import Agent
 import os
 import mlflow
+import torch.multiprocessing as mp
+import time
 
-# YAPILABILECEKLER:
-# Action secimi guncellenebilir
-# TAU eklenerek soft updateler yapilabilir
-# Epsilon tamamen kaldirilabilir
-# Entropy Regularization eklenebilir
-# Gradient clipping, learning rate scheduling eklenebilir
-# Model structure guncellenebilir, layer normalization eklenebilir
-
-NAME = "0012"
+NAME = "0016"
 DELTA = 0.05
 LEARNING_RATE = 5e-6
 GAMMA = 0.99
@@ -24,7 +18,7 @@ EPSILON = 1
 EPSILON_DECAY_RATE = 0.98
 EPSILON_DECAY_STEPS = 1
 NUM_EPISODES = 10001
-DESCRIPTION = "reduced learning rate"
+DESCRIPTION = "complex state, simple model"
 
 parameters = {
     "name": NAME,
@@ -46,7 +40,7 @@ class Hw3Env(environment.BaseEnv):
         super().__init__(**kwargs)
         self._delta = DELTA
         self._goal_thresh = 0.075  # easier goal detection
-        self._max_timesteps = 300  # allow more steps
+        self._max_timesteps = 100  # allow more steps
         self._prev_obj_pos = None  # track object movement
 
     def _create_scene(self, seed=None):
@@ -174,8 +168,12 @@ class Hw3Env(environment.BaseEnv):
     def is_truncated(self):
         return self._t >= self._max_timesteps
 
-    def step(self, action):
-        step_action = action.detach().clamp(-1, 1).cpu().numpy() * self._delta
+    def step(self, action, numpy_action=False):
+        if numpy_action:
+            step_action = action * self._delta
+        else:
+            step_action = action.detach().clamp(-1, 1).cpu().numpy() * self._delta
+
         ee_pos = self.data.site(self._ee_site).xpos[:2]
         target_pos = np.concatenate([ee_pos, [1.06]])
         target_pos[:2] = np.clip(target_pos[:2] + step_action, [0.25, -0.3], [0.75, 0.3])
@@ -262,14 +260,6 @@ def train():
             "episode_steps": episode_steps,
         }, step=i)
 
-        if i % 10 == 0:
-            print(f"Episode {i}/{num_episodes}")
-            print(f"  Reward: {cumulative_reward:.2f}")
-            print(f"  Steps: {episode_steps}")
-            print(f"  Success: {success}")
-            print(f"  Success Rate: {current_success_rate:.2f}")
-            print(f"  Loss: {loss:.6f}")
-
         if i % 250 == 0:
             torch.save(agent.model.state_dict(), f"models_pt/{name}/model_{i:05}.pth")
 
@@ -279,5 +269,185 @@ def train():
     np.save(f"metrics_np/{name}/success_rate.npy", np.array(success_rate))
 
 
+def complex_state(state):
+    distances = []
+    angles = []
+    for i in range(3):
+        for j in range(i+1, 3):
+            A = state[i*2:i*2+2]
+            B = state[j*2:j*2+2]
+            distances.append(torch.norm(A - B))
+
+            theta = torch.atan2(B[1] - A[1], B[0] - A[0])
+            degrees = torch.rad2deg(theta)
+            if 0 <= degrees <= 90:
+                x_value = (90 - degrees) / 90
+                y_value = degrees / 90
+                x_index = 0
+                y_index = 1
+            elif 90 < degrees <= 180:
+                x_value = (degrees - 90) / 90
+                y_value = (180 - degrees) / 90
+                x_index = 2
+                y_index = 1
+            elif -90 <= degrees < 0:
+                x_value = (90 + degrees) / 90
+                y_value = - degrees / 90
+                x_index = 0
+                y_index = 3
+            else:
+                x_value = - (90 + degrees) / 90
+                y_value = (180 + degrees) / 90
+                x_index = 1
+                y_index = 3
+
+            angle = torch.zeros(8)
+            angle[4+x_index] = 1
+            angle[x_index] = x_value
+            angle[4+y_index] = 1
+            angle[y_index] = y_value
+
+            angles.append(angle)
+
+    distances = torch.stack(distances)
+    angles = torch.stack(angles).flatten()
+    state = torch.cat([state, distances, angles])
+    return state
+
+
+def collector(model, shared_queue, is_collecting, is_finished, device):
+    env = Hw3Env(render_mode="offscreen")
+    while not is_finished.is_set():
+        while is_collecting.is_set():
+            env.reset()
+            state = env.high_level_state()
+            state = torch.from_numpy(state).float()
+            state = complex_state(state)
+            done = False
+            cum_reward = 0.0
+
+            states = []
+            actions = []
+            next_states = []
+            rewards = []
+
+            while not done:
+                states.append(state)
+                with torch.no_grad():
+                    action_mean, log_std = model(state).chunk(2, dim=-1)
+                action_std = torch.exp(log_std) + EPSILON
+                dist = torch.distributions.Normal(action_mean, action_std)
+                action = dist.rsample()
+                next_state, reward, is_terminal, is_truncated = env.step(action[0])
+                next_state = torch.from_numpy(next_state).float()
+                next_state = complex_state(next_state)
+                cum_reward += reward
+                done = is_terminal or is_truncated
+                state = next_state
+                actions.append(action)
+                next_states.append(next_state)
+                rewards.append(reward)
+                if is_finished.is_set():
+                    break
+            while len(states) < 100:
+                states.append(torch.zeros(6))
+                actions.append(torch.zeros((1, 2)))
+                next_states.append(torch.zeros(6))
+                rewards.append(0)
+
+            returns = []
+            G = 0
+            for r in reversed(rewards):
+                G = r + GAMMA * G
+                returns.insert(0, G)
+
+            shared_queue.put((states, actions, next_states, rewards, returns, cum_reward))
+            if is_finished.is_set():
+                break
+        if is_finished.is_set():
+            break
+        is_collecting.wait()
+
+
+def train_mp():
+    global EPSILON
+
+    name = NAME
+
+    os.makedirs(f'models_pt/{name}', exist_ok=True)
+    os.makedirs(f'metrics_np/{name}', exist_ok=True)
+
+    mlflow.start_run(run_name=f'{name}')
+    mlflow.log_params(params=parameters)
+
+    # if torch.backends.mps.is_available():
+    #     device = torch.device("mps")
+    # elif torch.cuda.is_available():
+    #     device = torch.device("cuda")
+    # else:
+    #     device = torch.device('cpu')
+    device = torch.device('cpu')
+    agent = Agent(device, LEARNING_RATE, GAMMA, EPSILON, EPSILON_DECAY_RATE, EPSILON_DECAY_STEPS, ENTROPY_COEF, MAX_GRAD_NORM)
+    mlflow.log_param("model", str(agent.model))
+    agent.model.share_memory()
+    shared_queue = mp.Queue()
+    is_collecting = mp.Event()
+    is_finished = mp.Event()
+
+    is_collecting.set()
+    procs = []
+    for i in range(4):
+        p = mp.Process(target=collector, args=(agent.model, shared_queue, is_collecting, is_finished, device))
+        p.start()
+        procs.append(p)
+
+    for i in range(NUM_EPISODES):
+        start = time.time()
+        buffer_fed = 0
+        states_list = []
+        actions_list = []
+        next_states_list = []
+        rewards_list = []
+        returns_list = []
+        cumulative_rewards = []
+        while buffer_fed < 8:
+            if not shared_queue.empty():
+                states, actions, next_states, rewards, returns, cumulative_reward = shared_queue.get()
+                states_list.append(torch.stack(states))
+                actions_list.append(torch.cat(actions))
+                next_states_list.append(torch.stack(next_states))
+                rewards_list.append(torch.FloatTensor(rewards))
+                returns_list.append(torch.FloatTensor(returns))
+                cumulative_rewards.append(cumulative_reward)
+                buffer_fed += 1
+        end = time.time()
+        is_collecting.clear()
+        states = torch.cat(states_list, dim=0)
+        actions = torch.cat(actions_list, dim=0)
+        # next_states = torch.cat(next_states_list, dim=0)
+        # rewards = torch.stack(rewards_list, dim=0)
+        returns = torch.stack(returns_list, dim=0)
+        print(f"{16/(end-start):.2f} runs/sec... Updating model...")
+        loss = agent.update_model_mp(states, actions, returns, EPSILON)
+
+        mlflow.log_metrics({
+            "total reward": sum(cumulative_rewards) / len(cumulative_rewards),
+            "loss": loss,
+            "epsilon": EPSILON
+        }, step=i)
+
+        if i % 250 == 0:
+            torch.save(agent.model.state_dict(), f"models_pt/{name}/model_{i:05}.pth")
+
+        if i % EPSILON_DECAY_STEPS == 0:
+            EPSILON *= EPSILON_DECAY_RATE
+        print(i, loss)
+        is_collecting.set()
+    is_finished.set()
+    for p in procs:
+        p.join()
+
+
 if __name__ == "__main__":
-    train()
+    # train()
+    train_mp()
