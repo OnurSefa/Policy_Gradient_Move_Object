@@ -1,0 +1,16 @@
+artifact_uri: file:///Users/os/Desktop/master/robot/Policy_Gradient_Move_Object/mlruns/0/0abcf5ccd2784d6e9eedcb4a9bd84524/artifacts
+deleted_time: 1742574651766
+end_time: 1742574528868
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: deleted
+run_id: 0abcf5ccd2784d6e9eedcb4a9bd84524
+run_name: industrious-gnat-370
+run_uuid: 0abcf5ccd2784d6e9eedcb4a9bd84524
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1742574474314
+status: 3
+tags: []
+user_id: os

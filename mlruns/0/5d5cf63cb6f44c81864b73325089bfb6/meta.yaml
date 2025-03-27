@@ -1,0 +1,16 @@
+artifact_uri: file:///Users/os/Desktop/master/robot/Policy_Gradient_Move_Object/mlruns/0/5d5cf63cb6f44c81864b73325089bfb6/artifacts
+deleted_time: 1742574651764
+end_time: 1742574302498
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: deleted
+run_id: 5d5cf63cb6f44c81864b73325089bfb6
+run_name: fearless-ram-971
+run_uuid: 5d5cf63cb6f44c81864b73325089bfb6
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1742574301321
+status: 3
+tags: []
+user_id: os

@@ -1,0 +1,16 @@
+artifact_uri: file:///Users/os/Desktop/master/robot/Policy_Gradient_Move_Object/mlruns/0/0c0cf674aa4940d088b97845198eb1f2/artifacts
+deleted_time: 1742574651764
+end_time: 1742574460077
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: deleted
+run_id: 0c0cf674aa4940d088b97845198eb1f2
+run_name: clumsy-crab-6
+run_uuid: 0c0cf674aa4940d088b97845198eb1f2
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1742574457064
+status: 3
+tags: []
+user_id: os

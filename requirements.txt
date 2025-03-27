@@ -1,0 +1,17 @@
+pillow~=9.4.0
+torch~=2.2.2
+requests~=2.26.0
+nltk~=3.9.1
+pymongo~=4.7.2
+unidecode~=1.3.6
+torchvision
+mlflow~=2.2.2
+numpy~=1.23.5
+scipy~=1.10.1
+einops~=0.8.0
+torchtoolbox~=0.1.8.2
+thop~=0.1.1-2209072238
+boto3
+dm_control==1.0.10
+mujoco==2.3.2
+pyyaml

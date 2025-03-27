@@ -1,0 +1,16 @@
+artifact_uri: file:///Users/os/Desktop/master/robot/Policy_Gradient_Move_Object/mlruns/0/0cbfc3c0a55f4480911fa12effa085c9/artifacts
+deleted_time: 1742574651767
+end_time: 1742574602152
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: deleted
+run_id: 0cbfc3c0a55f4480911fa12effa085c9
+run_name: enchanting-smelt-656
+run_uuid: 0cbfc3c0a55f4480911fa12effa085c9
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1742574554546
+status: 3
+tags: []
+user_id: os

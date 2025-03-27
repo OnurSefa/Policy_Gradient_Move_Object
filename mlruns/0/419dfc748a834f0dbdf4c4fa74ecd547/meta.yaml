@@ -1,0 +1,16 @@
+artifact_uri: file:///Users/os/Desktop/master/robot/Policy_Gradient_Move_Object/mlruns/0/419dfc748a834f0dbdf4c4fa74ecd547/artifacts
+deleted_time: 1742574651765
+end_time: 1742574287759
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: deleted
+run_id: 419dfc748a834f0dbdf4c4fa74ecd547
+run_name: rebellious-rook-614
+run_uuid: 419dfc748a834f0dbdf4c4fa74ecd547
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1742574287163
+status: 3
+tags: []
+user_id: os
