@@ -11,11 +11,11 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
         cmake \
         ninja-build \
         build-essential \
-        python3.9 \
-        python3.9-dev \
-        python3.9-pip \
-        python3.9-venv \
-        python-is-python3.9 \
+        python3 \
+        python3-dev \
+        python3-pip \
+        python3-venv \
+        python-is-python3 \
     && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install --upgrade pip && \
